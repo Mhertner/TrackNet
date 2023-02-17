@@ -5,6 +5,7 @@ import time
 import math
 import getopt
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 import tensorflow.keras.backend as K
 from utils import *
@@ -26,6 +27,8 @@ FRAME_STACK = args.frame_stack
 load_weights = args.load_weights
 video_path = args.video_path
 csv_path = args.csv_path
+preds_path = args.preds_path
+preds_name = args.preds_name
 
 opt = keras.optimizers.legacy.Adadelta(learning_rate=1.0)
 model=ResNet_Track(input_shape=(3, HEIGHT, WIDTH))
@@ -101,6 +104,8 @@ for _ in range(FRAME_STACK-1):
 
 frame_no = FRAME_STACK-1
 time_list=[]
+x_predictions = []
+y_predictions = []
 TP = TN = FP1 = FP2 = FN = 0
 while success:
 	if frame_no == n_frames:
@@ -117,6 +122,7 @@ while success:
 	time_list.append(end-start)
 	y_pred = y_pred > 0.5
 	y_pred = y_pred.astype('float32')
+	#print('Y-PRED', y_pred)
 	y_true = []
 	if info[frame_no]['Ball'] == 0:
 		y_true.append(genHeatMap(WIDTH, HEIGHT, -1, -1, sigma, mag))
@@ -148,7 +154,8 @@ while success:
 				max_area = area
 		target = rects[max_area_idx]
 		(cx_pred, cy_pred) = (int(ratio*(target[0] + target[2] / 2)), int(ratio*(target[1] + target[3] / 2)))
-
+		x_predictions.append(cx_pred)
+		y_predictions.append(cy_pred)
 		image_cp = np.copy(image)
 		cv2.circle(image_cp, (cx_pred, cy_pred), 5, (0,0,255), -1)
 		out.write(image_cp)
@@ -161,6 +168,15 @@ while success:
 		gray_imgs.popleft()
 		frame_no += 1
 
+
+xy_predictions = list(zip(x_predictions, y_predictions))
+df = pd.DataFrame(xy_predictions, columns=['X-coordinate', 'Y-coordinate'])
+
+if os.path.exists(preds_path):
+	df.to_csv(str(preds_path+preds_name))
+else:
+	os.mkdir(preds_path)
+	df.to_csv(str(preds_path+preds_name))
 out.release()
 total_time = sum(time_list)
 

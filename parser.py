@@ -51,3 +51,7 @@ parser.add_argument('--video_path', type=str, default='test/test.mp4',
                     help='video path to predict')
 parser.add_argument('--label_path', type=str, default='test/test.csv',
                     help='load ground truth csv for predict')
+parser.add_argument('--preds_path', type=str, default='predictions/',
+                    help='Where to save your results-csv')
+parser.add_argument('--preds_name', type=str, default='predictions.csv',
+                    help='Specify name of results-csv')
