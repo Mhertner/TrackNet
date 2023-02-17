@@ -55,3 +55,5 @@ parser.add_argument('--preds_path', type=str, default='predictions/',
                     help='Where to save your results-csv')
 parser.add_argument('--preds_name', type=str, default='predictions.csv',
                     help='Specify name of results-csv')
+parser.add_argument('--results_vid_path', type=str, default='prediction_videos/',
+                    help='Specify path for output video')
