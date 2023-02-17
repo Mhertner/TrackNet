@@ -28,7 +28,7 @@ load_weights = args.load_weights
 video_path = args.video_path
 csv_path = args.csv_path
 preds_path = args.preds_path
-preds_name = args.preds_name
+#preds_name = args.preds_name
 results_vid_path = args.results_vid_path
 
 opt = keras.optimizers.legacy.Adadelta(learning_rate=1.0)
@@ -181,7 +181,7 @@ df = pd.DataFrame(xy_predictions, columns=['X-coordinate', 'Y-coordinate'])
 if not os.path.exists(preds_path):
     os.mkdir(preds_path)
 
-df.to_csv(str(preds_path + preds_name))
+df.to_csv(str(preds_path + video_name + '.csv'))
 
 out.release()
 total_time = sum(time_list)
