@@ -146,6 +146,8 @@ while success:
     h_pred = y_pred[0] * 255
     h_pred = h_pred.astype('uint8')
     if np.amax(h_pred) <= 0:
+        x_predictions.append(None)
+        y_predictions.append(None)
         out.write(image)
     else:
         # print(h_pred[0])
