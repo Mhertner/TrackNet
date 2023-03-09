@@ -50,35 +50,17 @@ else:
     n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     video_name = os.path.split(video_path)[-1][:-4]
 
-if not os.path.isfile(csv_path) and not csv_path.endswith('.csv'):
-    compute = False
-    info = {
-        idx: {
-            'Frame': idx,
-            'Ball': 0,
-            'x': -1,
-            'y': -1
-        } for idx in range(n_frames)
-    }
-    print("Predict only, will not calculate accurracy")
-# else:
-#     compute = True
-#     print("MAJOR RIP")
-#     info = load_info(csv_path)
-#     if len(info) != n_frames:
-#         print("Number of frames in video and dictionary are not the same!")
-#         print("Fail to load, predict only.")
-#         compute = False
-#         info = {
-#             idx: {
-#                 'Frame': idx,
-#                 'Ball': 0,
-#                 'x': -1,
-#                 'y': -1
-#             } for idx in range(n_frames)
-#         }
-#     else:
-#         print("Load csv file successfully")
+# if not os.path.isfile(csv_path) and not csv_path.endswith('.csv'):
+#     compute = False
+info = {
+    idx: {
+        'Frame': idx,
+        'Ball': 0,
+        'x': -1,
+        'y': -1
+    } for idx in range(n_frames)
+}
+    # print("Predict only, will not calculate accurracy")
 
 print('Beginning predicting......')
 
@@ -93,26 +75,20 @@ fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 if not os.path.exists(results_vid_path):
     os.mkdir(results_vid_path)
 
-out = cv2.VideoWriter(results_vid_path + video_name + '_predict.mp4', fourcc, fps, size)
-
-out.write(image)
-
 img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 img = np.expand_dims(img, axis=2)
 gray_imgs.append(img)
 for _ in range(FRAME_STACK - 1):
     success, image = cap.read()
-    out.write(image)
 
     img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     img = np.expand_dims(img, axis=2)
     gray_imgs.append(img)
 
 frame_no = FRAME_STACK - 1
-# time_list = []
+time_list = []
 x_predictions = []
 y_predictions = []
-# TP = TN = FP1 = FP2 = FN = 0
 while success:
     if frame_no == n_frames:
         break
@@ -122,13 +98,12 @@ while success:
     img_input = np.expand_dims(img_input, axis=0)
     img_input = img_input.astype('float') / 255.
 
-    # start = time.time()
+    start = time.time()
     y_pred = model.predict(img_input, batch_size=BATCH_SIZE)
-    # end = time.time()
-    # time_list.append(end - start)
+    end = time.time()
+    time_list.append(end - start)
     y_pred = y_pred > 0.5
     y_pred = y_pred.astype('float32')
-    # print('Y-PRED', y_pred)
     y_true = []
     if info[frame_no]['Ball'] == 0:
         y_true.append(genHeatMap(WIDTH, HEIGHT, -1, -1, sigma, mag))
@@ -136,22 +111,12 @@ while success:
         y_true.append(
             genHeatMap(WIDTH, HEIGHT, int(info[frame_no]['x'] / ratio), int(info[frame_no]['y'] / ratio), sigma, mag))
 
-    # tp, tn, fp1, fp2, fn = confusion(y_pred, y_true, tol)
-    # TP += tp
-    # TN += tn
-    # FP1 += fp1
-    # FP2 += fp2
-    # FN += fn
-
     h_pred = y_pred[0] * 255
     h_pred = h_pred.astype('uint8')
     if np.amax(h_pred) <= 0:
         x_predictions.append(None)
         y_predictions.append(None)
-        out.write(image)
     else:
-        # print(h_pred[0])
-        # print(len(h_pred[0]))
         cnts, _ = cv2.findContours(h_pred[0].copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         rects = [cv2.boundingRect(ctr) for ctr in cnts]
         max_area_idx = 0
@@ -162,20 +127,18 @@ while success:
                 max_area_idx = i
                 max_area = area
         target = rects[max_area_idx]
+        print('FRRRRAAAME')
         (cx_pred, cy_pred) = (int(ratio * (target[0] + target[2] / 2)), int(ratio * (target[1] + target[3] / 2)))
         x_predictions.append(cx_pred)
         y_predictions.append(cy_pred)
-        # image_cp = np.copy(image)
-        # cv2.circle(image_cp, (cx_pred, cy_pred), 5, (0, 0, 255), -1)
-        # out.write(image_cp)
 
-    # success, image = cap.read()
-    # if success:
-    #     img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    #     img = np.expand_dims(img, axis=2)
-    #     gray_imgs.append(img)
-    #     gray_imgs.popleft()
-    #     frame_no += 1
+    success, image = cap.read()
+    if success:
+        img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        img = np.expand_dims(img, axis=2)
+        gray_imgs.append(img)
+        gray_imgs.popleft()
+        frame_no += 1
 
 xy_predictions = list(zip(x_predictions, y_predictions))
 df = pd.DataFrame(xy_predictions, columns=['X-coordinate', 'Y-coordinate'])
@@ -185,25 +148,7 @@ if not os.path.exists(preds_path):
 
 df.to_csv(str(preds_path + video_name + '.csv'))
 
-out.release()
+# out.release()
 total_time = sum(time_list)
 
-# if compute:
-#     print('YYYYYEEEEESSSS')
-#     print('==========================================================')
-#     accuracy, precision, recall = compute_acc((TP, TN, FP1, FP2, FN))
-#     avg_acc = (accuracy + precision + recall) / 3
-#
-#     print("Number of true positive:", TP)
-#     print("Number of true negative:", TN)
-#     print("Number of false positive FP1:", FP1)
-#     print("Number of false positive FP2:", FP2)
-#     print("Number of false negative:", FN)
-#     print("Accuracy:", accuracy)
-#     print("Precision:", precision)
-#     print("Recall:", recall)
-#     print("Total Time:", total_time)
-#     print('(ACC + Pre + Rec)/3:', avg_acc)
-#
-# print('Done......')
-#
+
